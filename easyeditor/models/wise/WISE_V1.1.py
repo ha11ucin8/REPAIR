@@ -117,7 +117,7 @@ class WISE(torch.nn.Module):
         setattr(eval(f"self.model.{self.layer}"), "key_id", -1)
         return self.model.generate(*args, **kwargs)
 
-    def edit(self, config, tokens, act_mask=None, deact_mask=None)
+    def edit(self, config, tokens, act_mask=None, deact_mask=None):
         # for retrieve ##
 
         global edit_history

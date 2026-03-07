@@ -227,6 +227,15 @@ class BaseEditor:
         assert hasattr(self.hparams, 'batch_size'), f'Method {self.alg_name} found, pls specify the batch_size....'
         all_metrics = []
         for record_chunks in _chunks(requests, self.hparams.batch_size):
+            chunk_metrics = []
+            chunk_start_idx = len(all_metrics)
+            for i, request in enumerate(record_chunks):
+                chunk_metrics.append({
+                    'case_id': chunk_start_idx + i,
+                    "requested_rewrite": request,
+                    "pre": compute_edit_quality(self.model, self.model_name, self.hparams, self.tok, request, self.hparams.device, test_generation=test_generation),
+                })
+
             start = time()
 
             edited_model, weights_copy = self.apply_algo(
@@ -241,17 +250,18 @@ class BaseEditor:
             LOG.info(f"Execution editing took {exec_time}")
 
             start = time()
-            chunk_metrics = []
             for i, request in enumerate(record_chunks):
+                chunk_metrics[i]["time"] = exec_time
+                chunk_metrics[i]["post"] = compute_edit_quality(edited_model, self.model_name, self.hparams, self.tok, request, self.hparams.device, test_generation=test_generation)
 
-                metrics = {
-                    'case_id': i,
-                    "requested_rewrite": request,
-                    "time": exec_time,
-                    "post": compute_edit_quality(edited_model, self.model_name, self.hparams, self.tok, request, self.hparams.device, test_generation=test_generation),
-                }
-
-                chunk_metrics.append(metrics)
+                if 'locality' in chunk_metrics[i]['post'].keys():
+                    for locality_key in request['locality'].keys():
+                        locality_result = []
+                        for ans, label in zip(chunk_metrics[i]['post']['locality'][f'{locality_key}_output'], chunk_metrics[i]['pre']['locality'][f'{locality_key}_output']):
+                            locality_result.append(np.mean(np.equal(ans, label)))
+                        chunk_metrics[i]['post']['locality'][f'{locality_key}_acc'] = locality_result
+                        chunk_metrics[i]['post']['locality'].pop(f'{locality_key}_output')
+                    chunk_metrics[i]['pre'].pop('locality')
 
             if self.alg_name == 'KN' or self.alg_name == 'GRACE' or self.alg_name == 'WISE':
                 with torch.no_grad():
@@ -267,8 +277,6 @@ class BaseEditor:
                         nethook.get_parameter(self.model, k)[...] = v.to(f"cuda:{self.hparams.device}")
 
             for i, request in enumerate(record_chunks):
-                chunk_metrics[i]["pre"] = compute_edit_quality(self.model, self.model_name, self.hparams, self.tok, request, self.hparams.device, test_generation=test_generation)
-
                 if verbose:
                     LOG.info(
                         f"{i} editing: {request['prompt']} -> {request['target_new']}  \n {chunk_metrics[i]}"
@@ -512,10 +520,12 @@ class BaseEditor:
                 results = {}
                 results['pre'] = {}
                 results['pre']['rewrite_ans'] = text_generate(self.model, self.model_name, self.hparams, self.tok, request['prompt'], self.hparams.device, eval_metric=eval_metric, test_generation=test_generation)
-                results['pre']['rephrase_ans'] = text_generate(self.model, self.model_name, self.hparams, self.tok, request['rephrase_prompt'], self.hparams.device, eval_metric=eval_metric, test_generation=test_generation)
+                if 'rephrase_prompt' in request:
+                    results['pre']['rephrase_ans'] = text_generate(self.model, self.model_name, self.hparams, self.tok, request['rephrase_prompt'], self.hparams.device, eval_metric=eval_metric, test_generation=test_generation)
                 por_results = []
-                for pr in request['portability']['por_hop']['prompt']:
-                    por_results.append(text_generate(self.model, self.model_name, self.hparams, self.tok, pr, self.hparams.device, eval_metric=eval_metric, test_generation=test_generation))
+                if 'portability' in request.keys() and 'por_hop' in request['portability'].keys():
+                    for pr in request['portability']['por_hop']['prompt']:
+                        por_results.append(text_generate(self.model, self.model_name, self.hparams, self.tok, pr, self.hparams.device, eval_metric=eval_metric, test_generation=test_generation))
                 if 'locality' in request.keys() and 'loc_hop' in request['locality'].keys():
                     loc_results = []
                     for pr in request['locality']['loc_hop']['prompt']:
@@ -562,10 +572,12 @@ class BaseEditor:
             else:
                 results_post = {}
                 results_post['rewrite_ans'] = text_generate(edited_model, self.model_name, self.hparams, self.tok, request['prompt'], self.hparams.device, eval_metric=eval_metric, test_generation=test_generation)
-                results_post['rephrase_ans'] = text_generate(edited_model, self.model_name, self.hparams, self.tok, request['rephrase_prompt'], self.hparams.device, eval_metric=eval_metric, test_generation=test_generation)
+                if 'rephrase_prompt' in request:
+                    results_post['rephrase_ans'] = text_generate(edited_model, self.model_name, self.hparams, self.tok, request['rephrase_prompt'], self.hparams.device, eval_metric=eval_metric, test_generation=test_generation)
                 por_results = []
-                for pr in request['portability']['por_hop']['prompt']:
-                    por_results.append(text_generate(edited_model, self.model_name, self.hparams, self.tok, pr, self.hparams.device, eval_metric=eval_metric, test_generation=test_generation))
+                if 'portability' in request.keys() and 'por_hop' in request['portability'].keys():
+                    for pr in request['portability']['por_hop']['prompt']:
+                        por_results.append(text_generate(edited_model, self.model_name, self.hparams, self.tok, pr, self.hparams.device, eval_metric=eval_metric, test_generation=test_generation))
                 if 'locality' in request.keys() and 'loc_hop' in request['locality'].keys():
                     loc_results = []
                     for pr in request['locality']['loc_hop']['prompt']:
