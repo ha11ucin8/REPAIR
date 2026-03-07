@@ -24,10 +24,74 @@ def get_all_acc_keys(dict_list):
         recursive_keys(dictionary)
 
     return all_keys
+
+def _flatten_numeric_values(value):
+    numeric_values = []
+
+    if value is None:
+        return numeric_values
+
+    if isinstance(value, dict):
+        return numeric_values
+
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            numeric_values.extend(_flatten_numeric_values(item))
+        return numeric_values
+
+    try:
+        scalar = float(value)
+    except (TypeError, ValueError):
+        return numeric_values
+
+    if np.isnan(scalar):
+        return numeric_values
+
+    numeric_values.append(scalar)
+    return numeric_values
+
+def _mean_numeric_values(values):
+    numeric_values = []
+    for value in values:
+        numeric_values.extend(_flatten_numeric_values(value))
+
+    if len(numeric_values) == 0:
+        return None
+
+    return float(np.mean(numeric_values))
+
+def _collect_nested_acc_metrics(all_metrics, eval_split, section_key):
+    nested_summary = dict()
+    acc_keys = set()
+
+    for metric in all_metrics:
+        section = metric.get(eval_split, {}).get(section_key, {})
+        if isinstance(section, dict):
+            for key in section.keys():
+                if key.endswith('acc'):
+                    acc_keys.add(key)
+
+    for acc_key in sorted(acc_keys):
+        mean_value = _mean_numeric_values([
+            metric.get(eval_split, {}).get(section_key, {}).get(acc_key)
+            for metric in all_metrics
+            if isinstance(metric.get(eval_split, {}).get(section_key, {}), dict)
+            and acc_key in metric.get(eval_split, {}).get(section_key, {})
+        ])
+        if mean_value is not None:
+            nested_summary[acc_key] = mean_value
+
+    return nested_summary
     
 def summary_metrics(all_metrics):
     if isinstance(all_metrics, dict):
         all_metrics = [all_metrics, ]
+    all_metrics = [metric for metric in all_metrics if isinstance(metric, dict)]
+
+    if len(all_metrics) == 0:
+        print("Metrics Summary: {}")
+        return {}
+
     logs_dir = './logs'
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
@@ -36,23 +100,31 @@ def summary_metrics(all_metrics):
         json.dump(all_metrics, f, ensure_ascii=False, indent=4)
 
     mean_metrics = dict()
+    scalar_metric_keys = ["rewrite_acc", "rephrase_acc", 'rewrite_ppl', 'ood_acc']
+
     for eval in ["pre", "post"]:
+        eval_metrics = [metric[eval] for metric in all_metrics if isinstance(metric.get(eval), dict)]
+        if len(eval_metrics) == 0:
+            continue
+
         mean_metrics[eval] = dict()
-        for key in ["rewrite_acc", "rephrase_acc", 'rewrite_ppl', 'ood_acc']:
-            if key in all_metrics[0][eval].keys():
-                mean_metrics[eval][key] = np.mean([metric[eval][key] for metric in all_metrics])
+        for key in scalar_metric_keys:
+            mean_value = _mean_numeric_values([
+                metric[eval][key]
+                for metric in all_metrics
+                if isinstance(metric.get(eval), dict) and key in metric[eval]
+            ])
+            if mean_value is not None:
+                mean_metrics[eval][key] = mean_value
+
         for key in ["locality", "portability"]:
-            if key in all_metrics[0][eval].keys() and all_metrics[0][eval][key] != {}:
-                mean_metrics[eval][key] = dict()
-                for lkey in get_all_acc_keys(all_metrics):
-                    metrics = [np.mean(metric[eval][key][lkey]) for metric in all_metrics if lkey in metric[eval][key].keys()]
-                    if len(metrics) > 0:
-                        mean_metrics[eval][key][lkey] = np.mean(metrics)
-                    # mean_metrics[eval][key][lkey] = np.mean(
-                    #     [metric[eval][key][lkey] for metric in all_metrics])
+            nested_metrics = _collect_nested_acc_metrics(all_metrics, eval, key)
+            if len(nested_metrics) > 0:
+                mean_metrics[eval][key] = nested_metrics
     # mean_metrics["time"] = np.mean([metric["time"] for metric in all_metrics])
 
     print("Metrics Summary: ", mean_metrics)
+    return mean_metrics
 
 def _prepare_requests(prompts: Union[str, List[str]],
                       target_new: Union[str, List[str]],

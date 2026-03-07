@@ -6,6 +6,7 @@ import argparse
 import time
 import torch
 import psutil
+import numpy as np
 from easyeditor import (
     FTHyperParams,
     WISEHyperParams,
@@ -134,6 +135,47 @@ if __name__ == "__main__":
     
     # We use sequential edit for lifelong scenario simulation
     if args.batch_sft:
+        eval_requests = requests[:100] if len(requests) > 100 else requests
+        print(f"Evaluating on {len(eval_requests)} samples...")
+        from tqdm import tqdm
+        from easyeditor import compute_edit_quality
+
+        def normalize_locality_metrics(pre_res, post_res, request):
+            if 'locality' not in post_res:
+                return
+
+            for locality_key in request.get('locality', {}).keys():
+                output_key = f'{locality_key}_output'
+                if output_key not in post_res['locality'] or output_key not in pre_res.get('locality', {}):
+                    continue
+
+                locality_result = []
+                for ans, label in zip(post_res['locality'][output_key], pre_res['locality'][output_key]):
+                    locality_result.append(float(np.mean(np.equal(ans, label))))
+
+                post_res['locality'][f'{locality_key}_acc'] = locality_result
+                post_res['locality'].pop(output_key, None)
+
+            pre_res.pop('locality', None)
+
+        metrics = []
+        print("Collecting pre-edit metrics...")
+        for i, request in enumerate(tqdm(eval_requests)):
+            pre_res = compute_edit_quality(
+                editor.model,
+                editor.model_name,
+                editor.hparams,
+                editor.tok,
+                request,
+                editor.hparams.device,
+                eval_metric=eval_metric
+            )
+            metrics.append({
+                'case_id': i,
+                'requested_rewrite': request,
+                'pre': pre_res,
+            })
+
         # Batch SFT: Pass all requests at once
         edited_model, weights_copy = editor.apply_algo(
             editor.model,
@@ -144,16 +186,10 @@ if __name__ == "__main__":
             return_orig_weights=True,
             keep_original_weight=False
         )
-        
-        # Manual Evaluation
-        metrics = []
-        eval_requests = requests[:100] if len(requests) > 100 else requests
-        print(f"Evaluating on {len(eval_requests)} samples...")
-        from tqdm import tqdm
-        from easyeditor import compute_edit_quality
-        
+
+        print("Collecting post-edit metrics...")
         for i, request in enumerate(tqdm(eval_requests)):
-             res = compute_edit_quality(
+             post_res = compute_edit_quality(
                 edited_model,
                 editor.model_name,
                 editor.hparams,
@@ -162,7 +198,8 @@ if __name__ == "__main__":
                 editor.hparams.device,
                 eval_metric=eval_metric
              )
-             metrics.append({'post': res})
+             normalize_locality_metrics(metrics[i]['pre'], post_res, request)
+             metrics[i]['post'] = post_res
     else:
         metrics, edited_model, _ = editor.edit_requests(
             requests=requests,
