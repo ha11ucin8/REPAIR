@@ -27,7 +27,7 @@ cd REPAIR
 ############################
 log "Logging in to Hugging Face"
 pip install -q huggingface_hub
-huggingface-cli login --token "$HF_TOKEN"
+hf login --token "$HF_TOKEN"
 
 CACHE_DIR="./hugging_cache"
 mkdir -p "$CACHE_DIR"
