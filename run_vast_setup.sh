@@ -33,15 +33,15 @@ CACHE_DIR="./hugging_cache"
 mkdir -p "$CACHE_DIR"
 
 log "Downloading meta-llama/Meta-Llama-3-8B-Instruct"
-huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct \
-  --local-dir "$CACHE_DIR/llama-3-8b-instruct"
+hf download meta-llama/Meta-Llama-3-8B-Instruct \
+  --local-dir "$CACHE_DIR/llama3-8b-instruct"
 
 log "Downloading Qwen/Qwen2.5-7B-Instruct"
-huggingface-cli download Qwen/Qwen2.5-7B-Instruct \
+hf download Qwen/Qwen2.5-7B-Instruct \
   --local-dir "$CACHE_DIR/qwen2.5-7b-instruct"
 
 log "Downloading deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
-huggingface-cli download deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B \
+hf download deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B \
   --local-dir "$CACHE_DIR/deepseek-r1-distill-qwen-1.5b"
 
 ############################
