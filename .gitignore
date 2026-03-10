@@ -1,2 +1,11 @@
 # ELDER/ # Commented out - now integrated
 ELDER_git_backup/
+.venv/
+data/
+outputs/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+hugging_cache/
+logs/

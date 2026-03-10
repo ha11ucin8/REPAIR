@@ -30,7 +30,7 @@ except ImportError:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--editing_method', required=False, type=str,default='WISE')
-    parser.add_argument('--hparams_dir', required=False, type=str,default='../hparams/WISE/llama-3-8b.yaml')
+    parser.add_argument('--hparams_dir', required=False, type=str,default='../hparams/WISE/llama3-8b.yaml')
     parser.add_argument('--data_dir', required=False, type=str,default='../data/wise')
     parser.add_argument('--data_type', required=False, type=str,
                         choices=['ZsRE', 'temporal', 'hallucination'],default='ZsRE')
@@ -63,14 +63,14 @@ if __name__ == "__main__":
 
 
     if args.data_type == 'ZsRE':
-        edit_data = json.load(open(f'{args.data_dir}/{args.data_type}/zsre_mend_edit.json', 'r', encoding='utf-8'))[:K]
-        loc_data = json.load(open(f'{args.data_dir}/{args.data_type}/zsre_mend_train.json', 'r', encoding='utf-8'))[:K]
+        edit_data = json.load(open(f'{args.data_dir}/{args.data_type}/zsre_horen_edit.json', 'r', encoding='utf-8'))[:K]
+        loc_data = json.load(open(f'{args.data_dir}/{args.data_type}/zsre_horen_train.json', 'r', encoding='utf-8'))[:K]
         loc_prompts = [edit_data_['loc'] + ' ' + edit_data_['loc_ans'] for edit_data_ in loc_data]
 
         prompts = [edit_data_['src'] for edit_data_ in edit_data]
         subject = [edit_data_['subject'] for edit_data_ in edit_data]
         rephrase_prompts = [edit_data_['rephrase'] for edit_data_ in edit_data]
-        target_new = [edit_data_['alt'] for edit_data_ in edit_data]
+        target_new = [edit_data_['answers'][0] for edit_data_ in edit_data]
         locality_prompts = [edit_data_['loc'] for edit_data_ in edit_data]
         locality_ans = [edit_data_['loc_ans'] for edit_data_ in edit_data]
         locality_inputs = {
