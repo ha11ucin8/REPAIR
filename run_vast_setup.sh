@@ -8,7 +8,6 @@ set -euo pipefail
 ############################
 # Tokens
 ############################
-GITHUB_TOKEN=""
 HF_TOKEN=""
 
 ############################
@@ -20,8 +19,7 @@ log() { printf "\n[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 # 1) Clone repo
 ############################
 log "Cloning REPAIR repo"
-GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" \
-  git clone git@github.com:ha11ucin8/REPAIR.git
+git clone https://github.com/ha11ucin8/REPAIR.git
 cd REPAIR
 
 ############################
