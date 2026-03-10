@@ -44,6 +44,7 @@ REPAIR addresses the critical challenge of **locality preservation** in lifelong
 **Problem**: Fixed intervention strategies fail to adapt to varying edit difficulties.
 
 **Solution**: REPAIR dynamically adjusts the intervention strength based on:
+
 - **Loss Convergence Rate**: Faster convergence → reduce intervention
 - **Edit Complexity**: Simple edits → lighter intervention
 - **Memory State**: High interference risk → careful intervention
@@ -68,6 +69,7 @@ for step in range(max_steps):
 **Problem**: Open-loop editing cannot detect and correct failures during the process.
 
 **Solution**: REPAIR monitors editing progress and adjusts strategy in real-time:
+
 - **Continuous Monitoring**: Track loss, gradient norms, activation patterns
 - **Failure Detection**: Identify divergence or stagnation early
 - **Adaptive Correction**: Adjust learning rate, intervention strength, or rollback
@@ -92,6 +94,7 @@ while not converged:
 **Problem**: Random edit ordering causes high interference between similar edits.
 
 **Solution**: REPAIR organizes edits by semantic similarity:
+
 - **Clustering**: Group similar edits together
 - **Sequential Processing**: Process clusters sequentially
 - **Interference Minimization**: Reduce conflicts between edits
@@ -164,6 +167,7 @@ REPAIR/
 | `compute_loss()` | 500-550 | Closed-loop feedback | §3.2 |
 
 **Correspondence to Paper**:
+
 - **Algorithm 1** (Progressive Intervention) → `edit()` method
 - **Algorithm 2** (Memory Merging) → `merge_weight()` method
 - **Figure 2** (Architecture) → `get_adapter_layer()` structure
@@ -199,6 +203,7 @@ merge_strategy: "ties"             # Weight merging algorithm
 ```
 
 **Parameter Tuning Guide**:
+
 - `lr`: Higher for difficult edits, lower for simple edits
 - `num_steps`: Increase if edits don't converge
 - `threshold`: Lower for stricter convergence
@@ -319,6 +324,7 @@ bash run_full_comparison.sh
 ```
 
 **What it does**:
+
 - Runs REPAIR and Original WISE on ZsRE, Hallucination, Temporal datasets
 - Tests with N=10, 100, 500 edits
 - Generates comparison tables and plots
@@ -339,6 +345,7 @@ uv run examples/run_cost_analysis.py \
 ```
 
 **Metrics Collected**:
+
 - Inference latency (ms/edit)
 - Side memory size (MB)
 - Training time (s)
@@ -362,6 +369,7 @@ uv run examples/run_ablation_heterogeneous.py \
 ```
 
 **Expected Results**:
+
 - Homogeneous: Locality ~42.5%
 - Heterogeneous: Locality ~29.4% (-30.8% degradation)
 
@@ -374,6 +382,7 @@ bash run_rebuttal_experiments.sh
 ```
 
 **Includes**:
+
 1. Cost analysis (REPAIR vs WISE)
 2. Heterogeneous batch ablation
 3. RECIPE baseline comparison (optional)
@@ -570,6 +579,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📧 Contact
 
 For questions or issues, please:
+
 - Open an issue on GitHub
 - Contact: [Your Email]
 

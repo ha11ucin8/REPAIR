@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+###############################################################################
+# Vast.ai instance setup script
+###############################################################################
+
+############################
+# Tokens
+############################
+GITHUB_TOKEN=""
+HF_TOKEN=""
+
+############################
+# Helpers
+############################
+log() { printf "\n[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+
+############################
+# 1) Clone repo
+############################
+log "Cloning REPAIR repo"
+GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" \
+  git clone git@github.com:ha11ucin8/REPAIR.git
+cd REPAIR
+
+############################
+# 2) Download models into ./hugging_cache
+############################
+log "Logging in to Hugging Face"
+pip install -q huggingface_hub
+huggingface-cli login --token "$HF_TOKEN"
+
+CACHE_DIR="./hugging_cache"
+mkdir -p "$CACHE_DIR"
+
+log "Downloading meta-llama/Meta-Llama-3-8B-Instruct"
+huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct \
+  --local-dir "$CACHE_DIR/llama-3-8b-instruct"
+
+log "Downloading Qwen/Qwen2.5-7B-Instruct"
+huggingface-cli download Qwen/Qwen2.5-7B-Instruct \
+  --local-dir "$CACHE_DIR/qwen2.5-7b-instruct"
+
+log "Downloading deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+huggingface-cli download deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B \
+  --local-dir "$CACHE_DIR/deepseek-r1-distill-qwen-1.5b"
+
+############################
+# 3) Install requirements
+############################
+log "Installing requirements.txt"
+pip install -r requirements.txt
+
+log "Setup complete"
